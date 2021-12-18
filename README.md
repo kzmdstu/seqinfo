@@ -16,7 +16,7 @@ seqinfo -help
 
 ## oiiotool
 
-It uses `oiiotool` as you can see in config.toml, which isn't neccesary but recommended.
+It uses `oiiotool` as you can see in config.toml.
 
 You can install `oiiotool` from epel-release in RockyLinux.
 
