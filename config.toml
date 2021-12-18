@@ -1,0 +1,11 @@
+[[fields]]
+name = "plate"
+value = "{{dirname $.FirstFile}}"
+
+[[fields]]
+name = "tc_in"
+value = """{{output "oiiotool" $.FirstFile "--echo" "{TOP.'smpte:Timecode'}"}}"""
+
+[[fields]]
+name = "tc_out"
+value = """{{output "oiiotool" $.LastFile "--echo" "{TOP.'smpte:Timecode'}"}}"""
