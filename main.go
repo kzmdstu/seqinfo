@@ -96,7 +96,14 @@ func main() {
 		verboseFlag bool
 		writeToFlag string
 	)
-	flag.StringVar(&configFlag, "config", "config.toml", "path of config file")
+	config := "config.toml"
+	configHelp := "path of config file"
+	envConfig := os.Getenv("SEQINFO_CONFIG")
+	if envConfig != "" {
+		config = envConfig
+		configHelp += ", default inherited from SEQINFO_CONFIG environment variable"
+	}
+	flag.StringVar(&configFlag, "config", config, configHelp)
 	flag.StringVar(&extsFlag, "exts", "dpx,exr", "meaningful extensions")
 	flag.StringVar(&sepFlag, "sep", "\t", "fields will be separated by this value when printed")
 	flag.BoolVar(&verboseFlag, "v", false, "print errors from value calculation")
