@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/BurntSushi/toml"
 	"github.com/xuri/excelize/v2"
@@ -70,6 +71,19 @@ func (s *Sequence) LastFile() string {
 }
 
 var ReSplitSeqName = regexp.MustCompile(`(.*\D)?(\d+)(.*?)$`)
+
+type Table struct {
+	sync.Mutex
+	Cells [][]interface{}
+}
+
+func NewTable(i, j int) *Table {
+	cells := make([][]interface{}, i)
+	for i := range cells {
+		cells[i] = make([]interface{}, j)
+	}
+	return &Table{Cells: cells}
+}
 
 func main() {
 	// Do not print time in logs.
@@ -172,62 +186,63 @@ func main() {
 	if writeToFlag != "" {
 		f = excelize.NewFile()
 	}
-	// write writes (or prints) the cell values in a row.
-	write := func() func([]interface{}) {
-		i := 0
-		return func(vals []interface{}) {
-			for j, val := range vals {
-				switch v := val.(type) {
-				case error:
-					if verboseFlag {
-						// It will break the lines when it is printing. But that's OK.
-						log.Print(v)
-					}
-				case string:
-					if writeToFlag == "" {
-						if j != 0 {
-							fmt.Print(sepFlag)
-						}
-						fmt.Print(val)
-					} else {
-						cell, err := excelize.CoordinatesToCellName(i+1, j+1)
-						if err != nil {
-							log.Fatal(err)
-						}
-						f.SetCellValue("Sheet1", cell, val)
-					}
-				default:
-					log.Fatal("invalid value of type: %t", v)
-				}
-			}
-			if writeToFlag == "" {
-				fmt.Print("\n")
-			}
-			i++
-		}
-	}()
-	// Write labels and values.
-	labels := make([]interface{}, 0, len(cfg.Fields))
-	for _, field := range cfg.Fields {
-		labels = append(labels, field.Name)
+	table := NewTable(len(seqs)+1, len(cfg.Fields)) // +1 for label
+	// labels
+	for j, field := range cfg.Fields {
+		table.Cells[0][j] = field.Name
 	}
-	write(labels)
-	var values []interface{}
-	for _, s := range seqs {
-		values = make([]interface{}, 0, len(cfg.Fields))
-		for _, field := range cfg.Fields {
-			out := strings.Builder{}
-			err := tmpl[field.Name].Execute(&out, s)
-			if err != nil {
-				if verboseFlag {
-					values = append(values, fmt.Errorf("failed to execute: %v", err))
+	// values
+	wg := sync.WaitGroup{}
+	for i, s := range seqs {
+		wg.Add(1)
+		go func(i int, s *Sequence) {
+			defer wg.Done()
+			for j, field := range cfg.Fields {
+				out := strings.Builder{}
+				err := tmpl[field.Name].Execute(&out, s)
+				if err != nil {
+					table.Lock()
+					table.Cells[i+1][j] = fmt.Errorf("failed to execute: %v", err)
+					table.Unlock()
 					continue
 				}
+				val := strings.TrimSpace(out.String())
+				table.Lock()
+				table.Cells[i+1][j] = val
+				table.Unlock()
 			}
-			val := strings.TrimSpace(out.String())
-			values = append(values, val)
+		}(i, s)
+	}
+	wg.Wait()
+	// Write to the destination.
+	for i, row := range table.Cells {
+		for j, val := range row {
+			switch v := val.(type) {
+			case error:
+				if verboseFlag {
+					// It will break the lines when it is printing. But that's OK.
+					log.Print(v)
+				}
+			case string:
+				if writeToFlag == "" {
+					if j != 0 {
+						fmt.Print(sepFlag)
+					}
+					fmt.Print(val)
+				} else {
+					cell, err := excelize.CoordinatesToCellName(i+1, j+1)
+					if err != nil {
+						log.Fatal(err)
+					}
+					f.SetCellValue("Sheet1", cell, val)
+				}
+			default:
+				log.Fatal("invalid value of type: %t", v)
+			}
 		}
-		write(values)
+		if writeToFlag == "" {
+			fmt.Print("\n")
+		}
 	}
 	// Save the result as an excel file, if needed.
 	if writeToFlag != "" {
