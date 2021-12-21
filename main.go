@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -73,13 +74,13 @@ var ReSplitSeqName = regexp.MustCompile(`(.*\D)?(\d+)(.*?)$`)
 
 type Table struct {
 	sync.Mutex
-	Cells [][]interface{}
+	Cells [][]string
 }
 
 func NewTable(i, j int) *Table {
-	cells := make([][]interface{}, i)
+	cells := make([][]string, i)
 	for i := range cells {
-		cells[i] = make([]interface{}, j)
+		cells[i] = make([]string, j)
 	}
 	return &Table{Cells: cells}
 }
@@ -199,52 +200,65 @@ func main() {
 		table.Cells[0][j] = field.Name
 	}
 	// values
-	wg := sync.WaitGroup{}
-	for i, s := range seqs {
-		wg.Add(1)
-		go func(i int, s *Sequence) {
-			defer wg.Done()
-			for j, field := range cfg.Fields {
-				out := strings.Builder{}
-				err := tmpl[field.Name].Execute(&out, s)
-				if err != nil {
-					table.Lock()
-					table.Cells[i+1][j] = fmt.Errorf("failed to execute: %v", err)
-					table.Unlock()
-					continue
-				}
-				val := strings.TrimSpace(out.String())
-				table.Lock()
-				table.Cells[i+1][j] = val
-				table.Unlock()
-			}
-		}(i, s)
+	type execInfo struct {
+		i, j int
+		tmpl *template.Template
+		seq  *Sequence
 	}
-	wg.Wait()
+	ch := make(chan execInfo)
+	done := make(chan bool)
+	maxConcurrent := runtime.NumCPU() * 2
+	for i := 0; i < maxConcurrent; i++ {
+		go func() {
+			for {
+				func() {
+					select {
+					case ex := <-ch:
+						out := strings.Builder{}
+						err := ex.tmpl.Execute(&out, ex.seq)
+						if err != nil {
+							if verboseFlag {
+								log.Printf("failed to execute: %v", err)
+							}
+							done <- true
+							return
+						}
+						val := strings.TrimSpace(out.String())
+						table.Lock()
+						table.Cells[ex.i+1][ex.j] = val
+						table.Unlock()
+						done <- true
+						return
+					}
+				}()
+			}
+		}()
+	}
+	go func() {
+		for i, s := range seqs {
+			for j, field := range cfg.Fields {
+				ch <- execInfo{i: i, j: j, tmpl: tmpl[field.Name], seq: s}
+			}
+		}
+	}()
+	n := len(seqs) * len(cfg.Fields)
+	for i := 0; i < n; i++ {
+		<-done
+	}
 	// Write to the destination.
 	for i, row := range table.Cells {
 		for j, val := range row {
-			switch v := val.(type) {
-			case error:
-				if verboseFlag {
-					// It will break the lines when it is printing. But that's OK.
-					log.Print(v)
+			if writeToFlag == "" {
+				if j != 0 {
+					fmt.Print(sepFlag)
 				}
-			case string:
-				if writeToFlag == "" {
-					if j != 0 {
-						fmt.Print(sepFlag)
-					}
-					fmt.Print(val)
-				} else {
-					cell, err := excelize.CoordinatesToCellName(j+1, i+1)
-					if err != nil {
-						log.Fatal(err)
-					}
-					f.SetCellValue("Sheet1", cell, val)
+				fmt.Print(val)
+			} else {
+				cell, err := excelize.CoordinatesToCellName(j+1, i+1)
+				if err != nil {
+					log.Fatal(err)
 				}
-			default:
-				log.Fatal("invalid value of type: %t", v)
+				f.SetCellValue("Sheet1", cell, val)
 			}
 		}
 		if writeToFlag == "" {
