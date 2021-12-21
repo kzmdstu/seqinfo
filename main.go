@@ -211,26 +211,21 @@ func main() {
 	for i := 0; i < maxConcurrent; i++ {
 		go func() {
 			for {
-				select {
-				case ex := <-ch:
-					func() {
-						out := strings.Builder{}
-						err := ex.tmpl.Execute(&out, ex.seq)
-						if err != nil {
-							if verboseFlag {
-								log.Printf("failed to execute: %v", err)
-							}
-							done <- true
-							return
-						}
-						val := strings.TrimSpace(out.String())
-						table.Lock()
-						table.Cells[ex.i+1][ex.j] = val
-						table.Unlock()
-						done <- true
-						return
-					}()
+				ex := <-ch
+				out := strings.Builder{}
+				err := ex.tmpl.Execute(&out, ex.seq)
+				if err != nil {
+					if verboseFlag {
+						log.Printf("failed to execute: %v", err)
+					}
+					done <- true
+					continue
 				}
+				val := strings.TrimSpace(out.String())
+				table.Lock()
+				table.Cells[ex.i+1][ex.j] = val
+				table.Unlock()
+				done <- true
 			}
 		}()
 	}
