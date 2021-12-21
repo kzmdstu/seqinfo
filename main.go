@@ -237,7 +237,7 @@ func main() {
 					}
 					fmt.Print(val)
 				} else {
-					cell, err := excelize.CoordinatesToCellName(i+1, j+1)
+					cell, err := excelize.CoordinatesToCellName(j+1, i+1)
 					if err != nil {
 						log.Fatal(err)
 					}
