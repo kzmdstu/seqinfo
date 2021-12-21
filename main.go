@@ -211,9 +211,9 @@ func main() {
 	for i := 0; i < maxConcurrent; i++ {
 		go func() {
 			for {
-				func() {
-					select {
-					case ex := <-ch:
+				select {
+				case ex := <-ch:
+					func() {
 						out := strings.Builder{}
 						err := ex.tmpl.Execute(&out, ex.seq)
 						if err != nil {
@@ -229,8 +229,8 @@ func main() {
 						table.Unlock()
 						done <- true
 						return
-					}
-				}()
+					}()
+				}
 			}
 		}()
 	}
