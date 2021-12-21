@@ -27,9 +27,8 @@ type Field struct {
 }
 
 var FieldFuncs = template.FuncMap{
-	"dirname": func(path string) string {
-		return filepath.Dir(path)
-	},
+	"dirname": filepath.Dir,
+	"abspath": filepath.Abs,
 	"output": func(args ...string) (string, error) {
 		if len(args) == 0 {
 			return "", fmt.Errorf("command not specified")
@@ -160,6 +159,7 @@ func main() {
 		if !found {
 			return nil
 		}
+		path = filepath.Clean(path)
 		dir := filepath.Dir(path)
 		name := filepath.Base(path)
 		m := ReSplitSeqName.FindStringSubmatch(name)

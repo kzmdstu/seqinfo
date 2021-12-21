@@ -1,6 +1,6 @@
 [[fields]]
 name = "plate"
-value = "{{dirname $.FirstFile}}"
+value = "{{abspath (dirname $.FirstFile)}}"
 
 [[fields]]
 name = "tc_in"
