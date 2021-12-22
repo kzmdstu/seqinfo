@@ -107,7 +107,7 @@ func main() {
 	flag.StringVar(&extsFlag, "exts", "dpx,exr", "meaningful extensions")
 	flag.StringVar(&sepFlag, "sep", "\t", "fields will be separated by this value when printed")
 	flag.BoolVar(&verboseFlag, "v", false, "print errors from value calculation")
-	flag.StringVar(&writeToFlag, "w", "", "excel file path to be written. existing file will be overrided. when unset, it will print the results instead.")
+	flag.StringVar(&writeToFlag, "w", "seqinfo_output.xlsx", "excel file path to be written. existing file will be overrided. when unset, it will print the results instead.")
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 1 {
