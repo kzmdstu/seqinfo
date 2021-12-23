@@ -4,16 +4,16 @@ seqinfo gathers info from sequences in directories, and prints or writes it to a
 
 ## Usage
 
-This will write the results to `seqinfo_output.xlsx`.
+It prints the results in the console.
 
 ```
 seqinfo /path/to/search/sequences
 ```
 
-You might want to see the results in the console instead.
+Or write the results to `seqinfo_output.xlsx`.
 
 ```
-seqinfo -w '' /path/to/search/sequences
+seqinfo -w /path/to/search/sequences
 ```
 
 For advanced uses, see the help.

@@ -101,6 +101,7 @@ func main() {
 		extsFlag    string
 		sepFlag     string
 		verboseFlag bool
+		writeFlag   bool
 		writeToFlag string
 	)
 	config := "config.toml"
@@ -114,13 +115,18 @@ func main() {
 	flag.StringVar(&extsFlag, "exts", "dpx,exr", "meaningful extensions")
 	flag.StringVar(&sepFlag, "sep", "\t", "fields will be separated by this value when printed")
 	flag.BoolVar(&verboseFlag, "v", false, "print errors from value calculation")
-	flag.StringVar(&writeToFlag, "w", "seqinfo_output.xlsx", "excel file path to be written. existing file will be overrided. when unset, it will print the results instead.")
+	flag.BoolVar(&writeFlag, "w", false, "write to excel file. will print instead when it is false.")
+	flag.StringVar(&writeToFlag, "f", "seqinfo_output.xlsx", "excel file path to be written. no-op if -w flag is off. existing file will be overrided.")
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 1 {
 		log.Print(filepath.Base(os.Args[0]) + " [args...] searchroot")
 		flag.PrintDefaults()
 		return
+	}
+	if writeToFlag == "" {
+		// Cannot write, print instead.
+		writeFlag = false
 	}
 	searchRoot := filepath.Clean(args[0])
 	if configFlag == "" {
@@ -198,7 +204,7 @@ func main() {
 	}
 	// Prepare writing to an excel file, if needed.
 	var f *excelize.File
-	if writeToFlag != "" {
+	if writeFlag {
 		f = excelize.NewFile()
 	}
 	table := NewTable(len(seqs)+1, len(cfg.Fields)) // +1 for label
@@ -250,7 +256,7 @@ func main() {
 	// Write to the destination.
 	for i, row := range table.Cells {
 		for j, val := range row {
-			if writeToFlag == "" {
+			if !writeFlag {
 				if j != 0 {
 					fmt.Print(sepFlag)
 				}
@@ -263,12 +269,12 @@ func main() {
 				f.SetCellValue("Sheet1", cell, val)
 			}
 		}
-		if writeToFlag == "" {
+		if !writeFlag {
 			fmt.Print("\n")
 		}
 	}
 	// Save the result as an excel file, if needed.
-	if writeToFlag != "" {
+	if writeFlag {
 		err := f.SaveAs(writeToFlag)
 		if err != nil {
 			log.Print(err)
