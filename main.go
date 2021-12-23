@@ -28,6 +28,13 @@ type Field struct {
 }
 
 var FieldFuncs = template.FuncMap{
+	"remap": func(path, from, to string) string {
+		if !strings.HasPrefix(path, from) {
+			return path
+		}
+		path = strings.Replace(path, from, to, 1)
+		return path
+	},
 	"dirname": filepath.Dir,
 	"abspath": filepath.Abs,
 	"output": func(args ...string) (string, error) {
