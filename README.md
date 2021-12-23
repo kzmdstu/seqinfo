@@ -4,7 +4,7 @@ seqinfo gathers info from sequences in directories, and prints or writes it to a
 
 ## Usage
 
-# This will write the results to `seqinfo_output.xlsx`.
+This will write the results to `seqinfo_output.xlsx`.
 
 ```
 seqinfo /path/to/search/sequences
