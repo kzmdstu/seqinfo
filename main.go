@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"html/template"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -158,11 +159,11 @@ func main() {
 	}
 	// Find sequences in the search root.
 	seqs := make([]*Sequence, 0)
-	err = filepath.Walk(searchRoot, func(path string, fi os.FileInfo, err error) error {
+	err = filepath.WalkDir(searchRoot, func(path string, ent fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("%v: %v", err, path)
 		}
-		if fi.IsDir() {
+		if ent.IsDir() {
 			return nil
 		}
 		ext := filepath.Ext(path)
