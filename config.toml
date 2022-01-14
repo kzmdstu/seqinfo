@@ -11,6 +11,10 @@ name = "frame_out"
 value = "{{$.End}}"
 
 [[fields]]
+name = "duration"
+value = "{{$.Length}}"
+
+[[fields]]
 name = "tc_in"
 value = """{{output "oiiotool" $.FirstFile "--echo" "{TOP.'smpte:Timecode'}"}}"""
 

@@ -77,6 +77,12 @@ func (s *Sequence) LastFile() string {
 	return strings.Replace(s.Name, "{{$.Frame}}", s.End, -1)
 }
 
+func (s *Sequence) Length() string {
+	end, _ := strconv.Atoi(s.End)
+	start, _ := strconv.Atoi(s.Start)
+	return strconv.Itoa(end - start + 1)
+}
+
 var ReSplitSeqName = regexp.MustCompile(`(.*\D)?(\d+)(.*?)$`)
 
 type Table struct {
