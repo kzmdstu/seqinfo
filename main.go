@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,6 +19,16 @@ import (
 )
 
 type Config struct {
+	Fields []string
+	Seq    SeqConfig
+	Mov    MovConfig
+}
+
+type SeqConfig struct {
+	Fields []Field
+}
+
+type MovConfig struct {
 	Fields []Field
 }
 
@@ -44,7 +53,7 @@ var FieldFuncs = template.FuncMap{
 		}
 		cmd := args[0]
 		args = args[1:]
-		safeCmds := []string{"oiiotool"}
+		safeCmds := []string{"oiiotool", "bin/movinfo"}
 		safe := false
 		for _, c := range safeCmds {
 			if cmd == c {
@@ -86,6 +95,10 @@ func (s *Sequence) Length() string {
 
 var ReSplitSeqName = regexp.MustCompile(`(.*\D)?(\d+)(.*?)$`)
 
+type Mov struct {
+	File string
+}
+
 type Table struct {
 	sync.Mutex
 	Cells [][]string
@@ -105,7 +118,8 @@ func main() {
 	// Parse Flags
 	var (
 		configFlag  string
-		extsFlag    string
+		imgExtsFlag string
+		movExtsFlag string
 		sepFlag     string
 		verboseFlag bool
 		writeFlag   bool
@@ -119,7 +133,8 @@ func main() {
 		configHelp += ", default inherited from SEQINFO_CONFIG environment variable"
 	}
 	flag.StringVar(&configFlag, "config", config, configHelp)
-	flag.StringVar(&extsFlag, "exts", "dpx,exr", "meaningful extensions")
+	flag.StringVar(&imgExtsFlag, "img-exts", "dpx,exr", "image extensions")
+	flag.StringVar(&movExtsFlag, "mov-exts", "mov,mp4", "mov extensions")
 	flag.StringVar(&sepFlag, "sep", "\t", "fields will be separated by this value when printed")
 	flag.BoolVar(&verboseFlag, "v", false, "print errors from value calculation")
 	flag.BoolVar(&writeFlag, "w", false, "write to excel file. will print instead when it is false.")
@@ -146,19 +161,34 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not decode config file (toml): %v", err)
 	}
-	extensions := strings.Split(extsFlag, ",")
+	fieldIdx := make(map[string]int)
+	for i, field := range cfg.Fields {
+		fieldIdx[field] = i
+	}
+	imgExts := strings.Split(imgExtsFlag, ",")
+	movExts := strings.Split(movExtsFlag, ",")
 	// Generate a template for each label.
-	tmpl := make(map[string]*template.Template)
-	for _, field := range cfg.Fields {
+	seqTmpl := make(map[string]*template.Template)
+	for _, field := range cfg.Seq.Fields {
 		t := template.New("t").Funcs(FieldFuncs)
 		t, err = t.Parse(field.Value)
 		if err != nil {
 			log.Fatal(err)
 		}
-		tmpl[field.Name] = t
+		seqTmpl[field.Name] = t
+	}
+	movTmpl := make(map[string]*template.Template)
+	for _, field := range cfg.Mov.Fields {
+		t := template.New("t").Funcs(FieldFuncs)
+		t, err = t.Parse(field.Value)
+		if err != nil {
+			log.Fatal(err)
+		}
+		movTmpl[field.Name] = t
 	}
 	// Find sequences in the search root.
 	seqs := make([]*Sequence, 0)
+	movs := make([]*Mov, 0)
 	err = filepath.WalkDir(searchRoot, func(path string, ent fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("%v: %v", err, path)
@@ -166,43 +196,51 @@ func main() {
 		if ent.IsDir() {
 			return nil
 		}
+		path = filepath.Clean(path)
 		ext := filepath.Ext(path)
 		if ext == "" {
 			return nil
 		}
 		ext = ext[1:] // remove .
-		found := false
-		for _, e := range extensions {
+		foundImg := false
+		for _, e := range imgExts {
 			if e == ext {
-				found = true
+				foundImg = true
 			}
 		}
-		if !found {
-			return nil
-		}
-		path = filepath.Clean(path)
-		dir := filepath.Dir(path)
-		name := filepath.Base(path)
-		m := ReSplitSeqName.FindStringSubmatch(name)
-		if m == nil {
-			return nil
-		}
-		pre := m[1]
-		frame := m[2]
-		f, _ := strconv.Atoi(frame)
-		post := m[3]
-		seq := filepath.Join(dir, pre+"{{$.Frame}}"+post)
-		if len(seqs) == 0 || seqs[len(seqs)-1].Name != seq {
-			seqs = append(seqs, &Sequence{Name: seq, Start: frame, End: frame})
-		} else {
-			s := seqs[len(seqs)-1]
-			start, _ := strconv.Atoi(s.Start)
-			end, _ := strconv.Atoi(s.End)
-			if f < start {
-				s.Start = frame
-			} else if f > end {
-				s.End = frame
+		if foundImg {
+			dir := filepath.Dir(path)
+			name := filepath.Base(path)
+			m := ReSplitSeqName.FindStringSubmatch(name)
+			if m == nil {
+				return nil
 			}
+			pre := m[1]
+			frame := m[2]
+			f, _ := strconv.Atoi(frame)
+			post := m[3]
+			seq := filepath.Join(dir, pre+"{{$.Frame}}"+post)
+			if len(seqs) == 0 || seqs[len(seqs)-1].Name != seq {
+				seqs = append(seqs, &Sequence{Name: seq, Start: frame, End: frame})
+			} else {
+				s := seqs[len(seqs)-1]
+				start, _ := strconv.Atoi(s.Start)
+				end, _ := strconv.Atoi(s.End)
+				if f < start {
+					s.Start = frame
+				} else if f > end {
+					s.End = frame
+				}
+			}
+		}
+		foundMov := false
+		for _, e := range movExts {
+			if e == ext {
+				foundMov = true
+			}
+		}
+		if foundMov {
+			movs = append(movs, &Mov{File: path})
 		}
 		return nil
 	})
@@ -214,50 +252,73 @@ func main() {
 	if writeFlag {
 		f = excelize.NewFile()
 	}
-	table := NewTable(len(seqs)+1, len(cfg.Fields)) // +1 for label
+	table := NewTable(len(seqs)+len(movs)+1, len(cfg.Fields)) // +1 for label
 	// labels
 	for j, field := range cfg.Fields {
-		table.Cells[0][j] = field.Name
+		table.Cells[0][j] = field
 	}
 	// values
 	type execInfo struct {
-		i, j int
-		tmpl *template.Template
-		seq  *Sequence
+		i, j  int
+		field string
+		seq   *Sequence
+		mov   *Mov
 	}
 	ch := make(chan execInfo)
+	nothing := make(chan bool)
 	done := make(chan bool)
-	maxConcurrent := runtime.NumCPU() * 2
-	for i := 0; i < maxConcurrent; i++ {
+	numConcurrent := 8
+	for i := 0; i < numConcurrent; i++ {
 		go func() {
 			for {
-				ex := <-ch
-				out := strings.Builder{}
-				err := ex.tmpl.Execute(&out, ex.seq)
-				if err != nil {
-					if verboseFlag {
-						log.Printf("failed to execute: %v", err)
+				select {
+				case ex := <-ch:
+					if ex.seq == nil && ex.mov == nil {
+						log.Fatalf("execInfo have neither seq or mov: %v", ex)
 					}
+					out := strings.Builder{}
+					var err error
+					if ex.seq != nil {
+						err = seqTmpl[ex.field].Execute(&out, ex.seq)
+					} else {
+						err = movTmpl[ex.field].Execute(&out, ex.mov)
+					}
+					if err != nil {
+						if verboseFlag {
+							log.Printf("failed to execute: %v", err)
+						}
+						continue
+					}
+					val := strings.TrimSpace(out.String())
+					table.Lock()
+					table.Cells[ex.i+1][ex.j] = val
+					table.Unlock()
+				case <-nothing:
 					done <- true
-					continue
+					return
 				}
-				val := strings.TrimSpace(out.String())
-				table.Lock()
-				table.Cells[ex.i+1][ex.j] = val
-				table.Unlock()
-				done <- true
 			}
 		}()
 	}
 	go func() {
-		for i, s := range seqs {
-			for j, field := range cfg.Fields {
-				ch <- execInfo{i: i, j: j, tmpl: tmpl[field.Name], seq: s}
+		n := 0
+		for _, s := range seqs {
+			for _, field := range cfg.Seq.Fields {
+				ch <- execInfo{i: n, j: fieldIdx[field.Name], field: field.Name, seq: s}
 			}
+			n++
+		}
+		for _, m := range movs {
+			for _, field := range cfg.Mov.Fields {
+				ch <- execInfo{i: n, j: fieldIdx[field.Name], field: field.Name, mov: m}
+			}
+			n++
+		}
+		for i := 0; i < numConcurrent; i++ {
+			nothing <- true
 		}
 	}()
-	n := len(seqs) * len(cfg.Fields)
-	for i := 0; i < n; i++ {
+	for i := 0; i < numConcurrent; i++ {
 		<-done
 	}
 	// Write to the destination.

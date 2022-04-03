@@ -1,23 +1,45 @@
-[[fields]]
+fields = ["plate", "frame_in", "frame_out", "duration", "tc_in", "tc_out"]
+
+[seq]
+
+[[seq.fields]]
 name = "plate"
 value = "{{abspath (dirname $.FirstFile)}}"
 
-[[fields]]
+[[seq.fields]]
 name = "frame_in"
 value = "{{$.Start}}"
 
-[[fields]]
+[[seq.fields]]
 name = "frame_out"
 value = "{{$.End}}"
 
-[[fields]]
+[[seq.fields]]
 name = "duration"
 value = "{{$.Length}}"
 
-[[fields]]
+[[seq.fields]]
 name = "tc_in"
 value = """{{output "oiiotool" $.FirstFile "--echo" "{TOP.'smpte:Timecode'}"}}"""
 
-[[fields]]
+[[seq.fields]]
 name = "tc_out"
 value = """{{output "oiiotool" $.LastFile "--echo" "{TOP.'smpte:Timecode'}"}}"""
+
+[mov]
+
+[[mov.fields]]
+name = "plate"
+value = "{{abspath $.File}}"
+
+[[mov.fields]]
+name = "duration"
+value = """{{output "bin/movinfo" "-duration" $.File}}"""
+
+[[mov.fields]]
+name = "tc_in"
+value = """{{output "bin/movinfo" "-start" $.File}}"""
+
+[[mov.fields]]
+name = "tc_out"
+value = """{{output "bin/movinfo" "-end" $.File}}"""
