@@ -53,16 +53,16 @@ var FieldFuncs = template.FuncMap{
 		}
 		cmd := args[0]
 		args = args[1:]
-		safeCmds := []string{"oiiotool", "bin/movinfo"}
-		safe := false
-		for _, c := range safeCmds {
+		unsafeCmds := []string{"rm"}
+		unsafe := false
+		for _, c := range unsafeCmds {
 			if cmd == c {
-				safe = true
+				unsafe = true
 				break
 			}
 		}
-		if !safe {
-			return "", fmt.Errorf("unknown command: %v", cmd)
+		if unsafe {
+			return "", fmt.Errorf("unsafe command: %v", cmd)
 		}
 		c := exec.Command(cmd, args...)
 		out, err := c.CombinedOutput()
