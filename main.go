@@ -95,10 +95,6 @@ func (s *Sequence) Length() string {
 
 var ReSplitSeqName = regexp.MustCompile(`(.*\D)?(\d+)(.*?)$`)
 
-type Mov struct {
-	File string
-}
-
 type Table struct {
 	sync.Mutex
 	Cells [][]string
@@ -240,7 +236,11 @@ func main() {
 			}
 		}
 		if foundMov {
-			movs = append(movs, &Mov{File: path})
+			mov, err := parseMov(path, verboseFlag)
+			if err != nil {
+				log.Fatal(err)
+			}
+			movs = append(movs, mov)
 		}
 		return nil
 	})
@@ -270,6 +270,7 @@ func main() {
 	numConcurrent := 8
 	for i := 0; i < numConcurrent; i++ {
 		go func() {
+			// Concurrently process each cell.
 			for {
 				select {
 				case ex := <-ch:
