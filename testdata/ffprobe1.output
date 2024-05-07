@@ -1,0 +1,77 @@
+{
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "prores",
+            "codec_long_name": "Apple ProRes (iCodec Pro)",
+            "profile": "HQ",
+            "codec_type": "video",
+            "codec_time_base": "1001/24000",
+            "codec_tag_string": "apch",
+            "codec_tag": "0x68637061",
+            "width": 1920,
+            "height": 1080,
+            "coded_width": 1920,
+            "coded_height": 1080,
+            "has_b_frames": 0,
+            "sample_aspect_ratio": "1:1",
+            "display_aspect_ratio": "16:9",
+            "pix_fmt": "yuv422p10le",
+            "level": -99,
+            "color_range": "tv",
+            "color_space": "bt709",
+            "color_transfer": "bt709",
+            "color_primaries": "bt709",
+            "field_order": "progressive",
+            "refs": 1,
+            "r_frame_rate": "24000/1001",
+            "avg_frame_rate": "24000/1001",
+            "time_base": "1/24000",
+            "start_pts": 0,
+            "start_time": "0.000000",
+            "duration_ts": 22022,
+            "duration": "0.917583",
+            "bit_rate": "185453760",
+            "bits_per_raw_sample": "10",
+            "nb_frames": "22",
+            "disposition": {
+                "default": 1,
+                "dub": 0,
+                "original": 0,
+                "comment": 0,
+                "lyrics": 0,
+                "karaoke": 0,
+                "forced": 0,
+                "hearing_impaired": 0,
+                "visual_impaired": 0,
+                "clean_effects": 0,
+                "attached_pic": 0,
+                "timed_thumbnails": 0
+            },
+            "tags": {
+                "creation_time": "2024-04-05T15:48:08.000000Z",
+                "language": "eng",
+                "handler_name": "Apple Video Media Handler",
+                "encoder": "Apple ProRes 422 HQ",
+                "timecode": "00:00:00:00"
+            }
+        }
+    ],
+    "format": {
+        "nb_streams": 2,
+        "nb_programs": 0,
+        "format_name": "mov,mp4,m4a,3gp,3g2,mj2",
+        "format_long_name": "QuickTime / MOV",
+        "start_time": "0.000000",
+        "duration": "0.917583",
+        "size": "22319740",
+        "bit_rate": "194595933",
+        "probe_score": 100,
+        "tags": {
+            "major_brand": "qt  ",
+            "minor_version": "537199360",
+            "compatible_brands": "qt  ",
+            "creation_time": "2024-04-05T15:48:08.000000Z"
+        }
+    }
+}

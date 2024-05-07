@@ -1,4 +1,5 @@
-fields = ["plate", "frame_in", "frame_out", "duration", "tc_in", "tc_out"]
+fields = ["plate", "frame_rate", "frame_in", "frame_out", "duration", "tc_in", "tc_out", "codec", "colorspace"]
+
 
 [seq]
 
@@ -26,6 +27,7 @@ value = """{{output "oiiotool" $.FirstFile "--echo" "{TOP.'smpte:Timecode'}"}}""
 name = "tc_out"
 value = """{{output "oiiotool" $.LastFile "--echo" "{TOP.'smpte:Timecode'}"}}"""
 
+
 [mov]
 
 [[mov.fields]]
@@ -33,13 +35,25 @@ name = "plate"
 value = "{{abspath $.File}}"
 
 [[mov.fields]]
+name = "codec"
+value = "{{$.Codec}}"
+
+[[mov.fields]]
+name = "colorspace"
+value = "{{$.Colorspace}}"
+
+[[mov.fields]]
 name = "duration"
-value = """{{output "bin/movinfo" "-duration" $.File}}"""
+value = "{{$.Duration}}"
+
+[[mov.fields]]
+name = "frame_rate"
+value = "{{$.FPS}}"
 
 [[mov.fields]]
 name = "tc_in"
-value = """{{output "bin/movinfo" "-start" $.File}}"""
+value = "{{$.TimecodeIn}}"
 
 [[mov.fields]]
 name = "tc_out"
-value = """{{output "bin/movinfo" "-end" $.File}}"""
+value = "{{$.TimecodeOut}}"
