@@ -118,6 +118,10 @@ func parseMovinfo(info []byte, verbose bool) (*Mov, error) {
 		case "24000/1001":
 			base = 24
 			drop = true
+		case "30000/1001":
+			// 29.97 is non-drop frame system
+			base = 30
+			drop = false
 		case "30/1":
 			base = 30
 			drop = false
@@ -159,6 +163,8 @@ func parseMovinfo(info []byte, verbose bool) (*Mov, error) {
 			fps = "23.976"
 		case "30/1":
 			fps = "30"
+		case "30000/1001":
+			fps = "29.97"
 		default:
 			return "", fmt.Errorf("unknown r_frame_rate: %v", video.RFrameRate)
 		}
