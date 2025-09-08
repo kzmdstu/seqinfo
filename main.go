@@ -119,7 +119,7 @@ func main() {
 		sepFlag     string
 		verboseFlag bool
 		writeFlag   bool
-		writeToFlag string
+		outputFlag  string
 	)
 	config := "config.toml"
 	configHelp := "path of config file"
@@ -134,7 +134,7 @@ func main() {
 	flag.StringVar(&sepFlag, "sep", "\t", "fields will be separated by this value when printed")
 	flag.BoolVar(&verboseFlag, "v", false, "print errors from value calculation")
 	flag.BoolVar(&writeFlag, "w", false, "write to excel file. will print instead when it is false.")
-	flag.StringVar(&writeToFlag, "f", "seqinfo_output.xlsx", "excel file path to be written. no-op if -w flag is off. existing file will be overrided.")
+	flag.StringVar(&outputFlag, "o", "seqinfo_output.xlsx", "excel file path to be written. no-op if -w flag is off. existing file will be overrided.")
 	flag.Parse()
 	args := flag.Args()
 	if len(args) != 1 {
@@ -142,7 +142,7 @@ func main() {
 		flag.PrintDefaults()
 		return
 	}
-	if writeToFlag == "" {
+	if outputFlag == "" {
 		// Cannot write, print instead.
 		writeFlag = false
 	}
@@ -344,7 +344,7 @@ func main() {
 	}
 	// Save the result as an excel file, if needed.
 	if writeFlag {
-		err := f.SaveAs(writeToFlag)
+		err := f.SaveAs(outputFlag)
 		if err != nil {
 			log.Print(err)
 		}
