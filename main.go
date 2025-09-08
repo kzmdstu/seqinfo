@@ -19,9 +19,9 @@ import (
 )
 
 type Config struct {
-	Fields []string
-	Seq    SeqConfig
-	Mov    MovConfig
+	Formats map[string][]string
+	Seq     SeqConfig
+	Mov     MovConfig
 }
 
 type SeqConfig struct {
@@ -119,6 +119,7 @@ func main() {
 		sepFlag     string
 		verboseFlag bool
 		writeFlag   bool
+		formatFlag  string
 		outputFlag  string
 	)
 	config := "config.toml"
@@ -134,6 +135,7 @@ func main() {
 	flag.StringVar(&sepFlag, "sep", "\t", "fields will be separated by this value when printed")
 	flag.BoolVar(&verboseFlag, "v", false, "print errors from value calculation")
 	flag.BoolVar(&writeFlag, "w", false, "write to excel file. will print instead when it is false.")
+	flag.StringVar(&formatFlag, "f", "default", "format name which defines information subset")
 	flag.StringVar(&outputFlag, "o", "seqinfo_output.xlsx", "excel file path to be written. no-op if -w flag is off. existing file will be overrided.")
 	flag.Parse()
 	args := flag.Args()
@@ -160,8 +162,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not decode config file (toml): %v", err)
 	}
+	fields, ok := cfg.Formats[formatFlag]
+	if !ok {
+		log.Fatalf("format %q not found on config file: %v", formatFlag, configFlag)
+	}
 	fieldIdx := make(map[string]int)
-	for i, field := range cfg.Fields {
+	for i, field := range fields {
 		fieldIdx[field] = i
 	}
 	imgExts := strings.Split(imgExtsFlag, ",")
@@ -255,9 +261,9 @@ func main() {
 	if writeFlag {
 		f = excelize.NewFile()
 	}
-	table := NewTable(len(seqs)+len(movs)+1, len(cfg.Fields)) // +1 for label
+	table := NewTable(len(seqs)+len(movs)+1, len(fields)) // +1 for label
 	// labels
-	for j, field := range cfg.Fields {
+	for j, field := range fields {
 		table.Cells[0][j] = field
 	}
 	// values
@@ -305,18 +311,22 @@ func main() {
 		}()
 	}
 	go func() {
-		n := 0
+		row := 0
 		for _, s := range seqs {
 			for _, field := range cfg.Seq.Fields {
-				ch <- execInfo{i: n, j: fieldIdx[field.Name], field: field.Name, seq: s}
+				if col, ok := fieldIdx[field.Name]; ok {
+					ch <- execInfo{i: row, j: col, field: field.Name, seq: s}
+				}
 			}
-			n++
+			row++
 		}
 		for _, m := range movs {
 			for _, field := range cfg.Mov.Fields {
-				ch <- execInfo{i: n, j: fieldIdx[field.Name], field: field.Name, mov: m}
+				if col, ok := fieldIdx[field.Name]; ok {
+					ch <- execInfo{i: row, j: col, field: field.Name, mov: m}
+				}
 			}
-			n++
+			row++
 		}
 		for i := 0; i < numConcurrent; i++ {
 			nothing <- true

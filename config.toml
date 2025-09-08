@@ -1,4 +1,9 @@
+# for testing backward compability
 fields = ["plate", "frame_rate", "frame_in", "frame_out", "duration", "tc_in", "tc_out", "codec", "colorspace"]
+
+[formats]
+default = ["plate", "frame_rate", "frame_in", "frame_out", "duration", "tc_in", "tc_out", "codec", "colorspace"]
+plate = ["plate", "frame_rate", "frame_in", "frame_out"]
 
 
 [seq]
