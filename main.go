@@ -137,8 +137,8 @@ func main() {
 	flag.StringVar(&outputFlag, "o", "seqinfo_output.xlsx", "excel file path to be written. no-op if -w flag is off. existing file will be overrided.")
 	flag.Parse()
 	args := flag.Args()
-	if len(args) != 1 {
-		log.Print(filepath.Base(os.Args[0]) + " [args...] searchroot")
+	if len(args) > 1 {
+		log.Print(filepath.Base(os.Args[0]) + " [args...] [searchroot]")
 		flag.PrintDefaults()
 		return
 	}
@@ -146,7 +146,10 @@ func main() {
 		// Cannot write, print instead.
 		writeFlag = false
 	}
-	searchRoot := filepath.Clean(args[0])
+	searchRoot := "."
+	if len(args) == 1 {
+		searchRoot = filepath.Clean(args[0])
+	}
 	if configFlag == "" {
 		log.Print(filepath.Base(os.Args[0]) + " [args...] searchroot")
 		flag.PrintDefaults()
