@@ -2,14 +2,14 @@
 fields = ["plate", "frame_rate", "frame_in", "frame_out", "duration", "tc_in", "tc_out", "codec", "colorspace"]
 
 [formats]
-default = ["plate", "frame_rate", "frame_in", "frame_out", "duration", "tc_in", "tc_out", "codec", "colorspace"]
-plate = ["plate", "frame_rate", "frame_in", "frame_out"]
+default = ["sequence", "frame_rate", "frame_in", "frame_out", "duration", "tc_in", "tc_out", "codec", "colorspace"]
+plate = ["plate:sequence", "frame_rate", "in:frame_in", "out:frame_out"]
 
 
 [seq]
 
 [[seq.fields]]
-name = "plate"
+name = "sequence"
 value = "{{abspath (dirname $.FirstFile)}}"
 
 [[seq.fields]]
@@ -36,7 +36,7 @@ value = """{{output "oiiotool" $.LastFile "--echo" "{TOP.'smpte:Timecode'}"}}"""
 [mov]
 
 [[mov.fields]]
-name = "plate"
+name = "sequence"
 value = "{{abspath $.File}}"
 
 [[mov.fields]]

@@ -162,13 +162,24 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not decode config file (toml): %v", err)
 	}
-	fields, ok := cfg.Formats[formatFlag]
+	columnHints, ok := cfg.Formats[formatFlag]
 	if !ok {
 		log.Fatalf("format %q not found on config file: %v", formatFlag, configFlag)
 	}
-	fieldIdx := make(map[string]int)
-	for i, field := range fields {
-		fieldIdx[field] = i
+	columns := make([]string, 0, len(columnHints))
+	colField := make(map[string]string)
+	for _, col := range columnHints {
+		var name, field string
+		toks := strings.SplitN(col, ":", 2)
+		if len(toks) == 2 {
+			name = toks[0]
+			field = toks[1]
+		} else {
+			name = col
+			field = col
+		}
+		columns = append(columns, name)
+		colField[name] = field
 	}
 	imgExts := strings.Split(imgExtsFlag, ",")
 	movExts := strings.Split(movExtsFlag, ",")
@@ -261,10 +272,10 @@ func main() {
 	if writeFlag {
 		f = excelize.NewFile()
 	}
-	table := NewTable(len(seqs)+len(movs)+1, len(fields)) // +1 for label
+	table := NewTable(len(seqs)+len(movs)+1, len(columns)) // +1 for label
 	// labels
-	for j, field := range fields {
-		table.Cells[0][j] = field
+	for j, col := range columns {
+		table.Cells[0][j] = col
 	}
 	// values
 	type execInfo struct {
@@ -284,14 +295,26 @@ func main() {
 				select {
 				case ex := <-ch:
 					if ex.seq == nil && ex.mov == nil {
-						log.Fatalf("execInfo have neither seq or mov: %v", ex)
+						if verboseFlag {
+							log.Print("execInfo have neither seq nor mov: %v", ex)
+						}
 					}
 					out := strings.Builder{}
 					var err error
 					if ex.seq != nil {
-						err = seqTmpl[ex.field].Execute(&out, ex.seq)
+						tmpl := seqTmpl[ex.field]
+						if tmpl == nil {
+							err = fmt.Errorf("sequence does not have field: %v", ex.field)
+						} else {
+							err = tmpl.Execute(&out, ex.seq)
+						}
 					} else {
-						err = movTmpl[ex.field].Execute(&out, ex.mov)
+						tmpl := movTmpl[ex.field]
+						if tmpl == nil {
+							err = fmt.Errorf("mov does not have field: %v", ex.field)
+						} else {
+							err = tmpl.Execute(&out, ex.mov)
+						}
 					}
 					if err != nil {
 						if verboseFlag {
@@ -310,23 +333,37 @@ func main() {
 			}
 		}()
 	}
+	seqField := make(map[string]bool)
+	for _, field := range cfg.Seq.Fields {
+		seqField[field.Name] = true
+	}
+	movField := make(map[string]bool)
+	for _, field := range cfg.Mov.Fields {
+		movField[field.Name] = true
+	}
 	go func() {
-		row := 0
+		i := 0
 		for _, s := range seqs {
-			for _, field := range cfg.Seq.Fields {
-				if col, ok := fieldIdx[field.Name]; ok {
-					ch <- execInfo{i: row, j: col, field: field.Name, seq: s}
+			for j, col := range columns {
+				field := colField[col]
+				if !seqField[field] {
+					continue
 				}
+				info := execInfo{i: i, j: j, field: field, seq: s}
+				ch <- info
 			}
-			row++
+			i++
 		}
 		for _, m := range movs {
-			for _, field := range cfg.Mov.Fields {
-				if col, ok := fieldIdx[field.Name]; ok {
-					ch <- execInfo{i: row, j: col, field: field.Name, mov: m}
+			for j, col := range columns {
+				field := colField[col]
+				if !movField[field] {
+					continue
 				}
+				info := execInfo{i: i, j: j, field: field, mov: m}
+				ch <- info
 			}
-			row++
+			i++
 		}
 		for i := 0; i < numConcurrent; i++ {
 			nothing <- true
